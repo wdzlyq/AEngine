@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "components": {
+    "MotorComponent": {
+      "description": "角色运动控制",
+      "fields": {
+        "m_move_speed": {"type": "float", "unit": "m/s", "range": [0, 20], "desc": "基础移动速度"},
+        "m_jump_height": {"type": "float", "unit": "m", "range": [0, 5], "desc": "跳跃高度"},
+        "m_max_move_speed_ratio": {"type": "float", "range": [0, 3], "desc": "最大移动速度倍率"},
+        "m_max_sprint_speed_ratio": {"type": "float", "range": [0, 5], "desc": "最大冲刺速度倍率"},
+        "m_move_acceleration": {"type": "float", "range": [0, 10], "desc": "移动加速度"},
+        "m_sprint_acceleration": {"type": "float", "range": [0, 10], "desc": "冲刺加速度"}
+      }
+    },
+    "TransformComponent": {
+      "description": "物体的位置、旋转、缩放",
+      "fields": {
+        "m_transform": {"type": "Transform", "desc": "世界变换（位置/旋转/缩放）"}
+      }
+    },
+    "RigidBodyComponent": {
+      "description": "物理刚体",
+      "fields": {
+        "m_rigidbody_res": {"type": "RigidBodyComponentRes", "desc": "刚体参数"}
+      }
+    },
+    "AnimationComponent": {
+      "description": "骨骼动画",
+      "fields": {
+        "skeleton_file_path": {"type": "string", "desc": "骨骼定义文件路径"},
+        "blend_state": {"type": "BlendState", "desc": "动画混合状态"}
+      }
+    },
+    "MeshComponent": {
+      "description": "渲染网格",
+      "fields": {
+        "m_mesh_res": {"type": "MeshComponentRes", "desc": "网格资源"}
+      }
+    }
+  },
+  "base_types": {
+    "Vector3": {"desc": "三维向量，单位米", "fields": {"x": "float", "y": "float", "z": "float"}},
+    "Transform": {"desc": "变换：位置(m_position)、旋转(m_rotation 四元数)、缩放(m_scale)"},
+    "Quaternion": {"desc": "四元数旋转", "fields": {"w": "float", "x": "float", "y": "float", "z": "float"}}
+  },
+  "input_commands": {
+    "FORWARD": 1,
+    "BACKWARD": 2,
+    "LEFT": 4,
+    "RIGHT": 8,
+    "JUMP": 16,
+    "SPRINT": 64,
+    "FREE_CAMERA": 256
+  }
+}

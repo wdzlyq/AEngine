@@ -13,20 +13,13 @@ layout(location = 0) out highp vec4 out_color;
 void main()
 {
     highp vec4 scene_color = subpassLoad(in_scene_color).rgba;
-    
-    highp vec4 ui_color = subpassLoad(in_ui_color).rgba;
-    
-    // Gamma correct
-    // TODO: select the VK_FORMAT_B8G8R8A8_SRGB surface format,
-    // there is no need to do gamma correction in the fragment shader
-    if(ui_color.r<1e-6&&ui_color.g<1e-6&&ui_color.a<1e-6)
-    {
-        ui_color = vec4(pow(ui_color.r, 1.0 / 2.2), pow(ui_color.g, 1.0 / 2.2), pow(ui_color.b, 1.0 / 2.2), pow(ui_color.a, 1.0 / 2.2));
-        out_color = scene_color;
-    }
-    else
-    {
-        ui_color = vec4(pow(ui_color.r, 1.0 / 2.2), pow(ui_color.g, 1.0 / 2.2), pow(ui_color.b, 1.0 / 2.2), pow(ui_color.a, 1.0 / 2.2));
-        out_color = ui_color;
-    }
+    highp vec4 ui_color    = subpassLoad(in_ui_color).rgba;
+
+    // Gamma correct the UI layer (ImGui renders in linear, output is sRGB).
+    // TODO: select VK_FORMAT_B8G8R8A8_SRGB surface format and remove this.
+    ui_color.rgb = pow(ui_color.rgb, vec3(1.0 / 2.2));
+
+    // Alpha-blend the UI on top of the scene.
+    // Using ui_color.a as blend weight; scene shows through where UI is transparent.
+    out_color = vec4(mix(scene_color.rgb, ui_color.rgb, ui_color.a), 1.0);
 }

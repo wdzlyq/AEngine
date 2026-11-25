@@ -200,11 +200,7 @@ namespace Piccolo
         }
 
         samplerInfo.minLod = 0.0f;
-        // Use VK_LOD_CLAMP_NONE (1000.f) so the driver samples all available
-        // mip levels of the irradiance / specular cubemaps.  The exact mip
-        // count is determined in createIBLTextures() which runs after this
-        // function; clamping to a fixed 8 could truncate or over-reach.
-        samplerInfo.maxLod = 1000.0f;
+        samplerInfo.maxLod = 8.0f; // TODO: irradiance_texture_miplevels
         samplerInfo.mipLodBias = 0.0f;
 
         if (m_global_render_resource._ibl_resource._irradiance_texture_sampler != RHI_NULL_HANDLE)

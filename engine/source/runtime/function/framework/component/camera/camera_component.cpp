@@ -39,15 +39,23 @@ namespace Piccolo
             LOG_ERROR("invalid camera type");
         }
 
-        RenderSwapContext& swap_context = g_runtime_global_context.m_render_system->getSwapContext();
-        CameraSwapData     camera_swap_data;
-        camera_swap_data.m_fov_x                           = m_camera_res.m_parameter->m_fov;
-        swap_context.getLogicSwapData().m_camera_swap_data = camera_swap_data;
+        // Render-system is absent in headless mode; nothing to push to then.
+        if (g_runtime_global_context.m_render_system)
+        {
+            RenderSwapContext& swap_context = g_runtime_global_context.m_render_system->getSwapContext();
+            CameraSwapData     camera_swap_data;
+            camera_swap_data.m_fov_x                           = m_camera_res.m_parameter->m_fov;
+            swap_context.getLogicSwapData().m_camera_swap_data = camera_swap_data;
+        }
     }
 
     void CameraComponent::tick(float delta_time)
     {
         if (!m_parent_object.lock())
+            return;
+
+        // Skip all camera logic in headless mode (no render target to update).
+        if (!g_runtime_global_context.m_render_system)
             return;
 
         std::shared_ptr<Level> current_level = g_runtime_global_context.m_world_manager->getCurrentActiveLevel().lock();

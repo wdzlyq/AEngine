@@ -40,6 +40,7 @@ namespace Piccolo
         CommandResult cmdSnapshot(const SnapshotParams& p);
         CommandResult cmdGetState();
         CommandResult cmdQueryObjects();
+        CommandResult cmdSaveLevel();
 
         // --- command queue ---
         struct PendingCommand

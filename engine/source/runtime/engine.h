@@ -11,6 +11,10 @@ namespace Piccolo
     extern bool                            g_is_editor_mode;
     extern std::unordered_set<std::string> g_editor_tick_component_types;
 
+    // When true the engine runs without a display window / Vulkan renderer.
+    // Set before startEngine(). Drives runHeadless() and null-guards render code.
+    extern bool g_is_headless;
+
     class PiccoloEngine
     {
         friend class PiccoloEditor;
@@ -27,6 +31,10 @@ namespace Piccolo
         bool isQuit() const { return m_is_quit; }
         void run();
         bool tickOneFrame(float delta_time);
+
+        // Run without a display window for up to max_ticks logic ticks.
+        // Uses a fixed delta-time of 1/60 s. Pass -1 for unlimited.
+        void runHeadless(int max_ticks = -1);
 
         int getFPS() const { return m_fps; }
 

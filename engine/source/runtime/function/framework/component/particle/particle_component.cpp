@@ -43,6 +43,10 @@ namespace Piccolo
 
     void ParticleComponent::tick(float delta_time)
     {
+        // Render-system is absent in headless mode; nothing to push to then.
+        if (!g_runtime_global_context.m_render_system)
+            return;
+
         RenderSwapContext& swap_context = g_runtime_global_context.m_render_system->getSwapContext();
 
         RenderSwapData& logic_swap_data = swap_context.getLogicSwapData();

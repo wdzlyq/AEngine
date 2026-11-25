@@ -26,6 +26,7 @@ namespace Piccolo
 {
     bool                            g_is_editor_mode {false};
     std::unordered_set<std::string> g_editor_tick_component_types {};
+    bool                            g_is_headless {false};
 
     void PiccoloEngine::startEngine(const std::string& config_file_path)
     {
@@ -50,6 +51,12 @@ namespace Piccolo
 
     void PiccoloEngine::run()
     {
+        if (g_is_headless)
+        {
+            runHeadless(-1);
+            return;
+        }
+
         std::shared_ptr<WindowSystem> window_system = g_runtime_global_context.m_window_system;
         ASSERT(window_system);
 
@@ -58,6 +65,21 @@ namespace Piccolo
             const float delta_time = calculateDeltaTime();
             tickOneFrame(delta_time);
         }
+    }
+
+    void PiccoloEngine::runHeadless(int max_ticks)
+    {
+        constexpr float k_fixed_delta_time = 1.0f / 60.0f;
+        LOG_INFO("engine running headless (max_ticks={})", max_ticks);
+
+        int tick = 0;
+        while (!m_is_quit && (max_ticks < 0 || tick < max_ticks))
+        {
+            tickOneFrame(k_fixed_delta_time);
+            ++tick;
+        }
+
+        LOG_INFO("engine headless loop ended after {} ticks", tick);
     }
 
     float PiccoloEngine::calculateDeltaTime()
@@ -86,24 +108,25 @@ namespace Piccolo
         logicalTick(delta_time);
         calculateFPS(delta_time);
 
-        // single thread
-        // exchange data between logic and render contexts
-        g_runtime_global_context.m_render_system->swapLogicRenderData();
+        if (!g_is_headless)
+        {
+            // single thread: exchange data between logic and render contexts
+            g_runtime_global_context.m_render_system->swapLogicRenderData();
 
-        rendererTick(delta_time);
+            rendererTick(delta_time);
 
 #ifdef ENABLE_PHYSICS_DEBUG_RENDERER
-        g_runtime_global_context.m_physics_manager->renderPhysicsWorld(delta_time);
+            g_runtime_global_context.m_physics_manager->renderPhysicsWorld(delta_time);
 #endif
 
-        g_runtime_global_context.m_window_system->pollEvents();
+            g_runtime_global_context.m_window_system->pollEvents();
+            g_runtime_global_context.m_window_system->setTitle(
+                std::string("Piccolo - " + std::to_string(getFPS()) + " FPS").c_str());
 
+            return !g_runtime_global_context.m_window_system->shouldClose();
+        }
 
-        g_runtime_global_context.m_window_system->setTitle(
-            std::string("Piccolo - " + std::to_string(getFPS()) + " FPS").c_str());
-
-        const bool should_window_close = g_runtime_global_context.m_window_system->shouldClose();
-        return !should_window_close;
+        return !m_is_quit;
     }
 
     // ── Agent bridge helpers (phase 0) ──────────────────────────────────

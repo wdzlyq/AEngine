@@ -65,6 +65,15 @@ namespace Piccolo
             m_array_map.clear();
         }
 
+        std::vector<std::string> TypeMetaRegisterinterface::getAllTypeNames()
+        {
+            std::vector<std::string> names;
+            names.reserve(m_class_map.size());
+            for (const auto& kv : m_class_map)
+                names.push_back(kv.first);
+            return names;
+        }
+
         TypeMeta::TypeMeta(std::string type_name) : m_type_name(type_name)
         {
             m_is_valid = false;

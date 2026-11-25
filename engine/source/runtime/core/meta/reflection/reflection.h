@@ -107,6 +107,9 @@ namespace Piccolo
             static void registerToArrayMap(const char* name, ArrayFunctionTuple* value);
 
             static void unregisterAll();
+
+            // Returns the names of every type registered in the class map.
+            static std::vector<std::string> getAllTypeNames();
         };
         class TypeMeta
         {

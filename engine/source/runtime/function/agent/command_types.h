@@ -30,12 +30,15 @@ namespace Piccolo
         Snapshot,   // save or restore
         GetState,
         QueryObjects,
+        SaveLevel,
     };
 
     struct CreateObjectParams
     {
         std::string              name;
+        std::string              definition; // path to .object.json (e.g. asset/objects/character/player/player.object.json)
         Vector3                  position {Vector3::ZERO};
+        bool                     set_position {false}; // true if caller supplied a position
         std::vector<std::string> components;
     };
 

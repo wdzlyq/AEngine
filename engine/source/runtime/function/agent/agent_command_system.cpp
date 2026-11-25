@@ -127,6 +127,8 @@ namespace Piccolo
                 return cmdGetState();
             case CommandType::QueryObjects:
                 return cmdQueryObjects();
+            case CommandType::SaveLevel:
+                return cmdSaveLevel();
             default:
                 return {false, "Unknown command type", ""};
         }
@@ -136,12 +138,57 @@ namespace Piccolo
 
     CommandResult AgentCommandSystem::cmdGetCapabilities()
     {
-        auto asset_folder = g_runtime_global_context.m_config_manager->getAssetFolder();
-        std::string schema_path = (asset_folder / "agent" / "component_schema.json").string();
-        std::string schema = readFile(schema_path);
-        if (schema.empty())
-            return {false, "component_schema.json not found at " + schema_path, ""};
-        return {true, "", schema};
+        // --- Part 1: hand-written component schema (descriptions, ranges) ---
+        auto        asset_folder = g_runtime_global_context.m_config_manager->getAssetFolder();
+        std::string schema_path  = (asset_folder / "agent" / "component_schema.json").string();
+        std::string static_schema = readFile(schema_path);
+
+        // --- Part 2: live reflection schema (all registered types + field names/types) ---
+        std::vector<std::string> type_names =
+            Reflection::TypeMetaRegisterinterface::getAllTypeNames();
+
+        Json::object live_types;
+        for (const std::string& type_name : type_names)
+        {
+            Reflection::TypeMeta meta = Reflection::TypeMeta::newMetaFromName(type_name);
+            if (!meta.isValid())
+                continue;
+
+            Reflection::FieldAccessor* fields = nullptr;
+            int count = meta.getFieldsList(fields);
+
+            Json::object field_map;
+            for (int i = 0; i < count; ++i)
+            {
+                const char* fname = fields[i].getFieldName();
+                const char* ftype = fields[i].getFieldTypeName();
+                bool        is_arr = fields[i].isArrayType();
+                field_map[fname]  = Json(Json::object{
+                    {"type",     ftype},
+                    {"is_array", is_arr}
+                });
+            }
+            delete[] fields;
+
+            live_types[type_name] = Json(Json::object{
+                {"fields",     Json(field_map)},
+                {"type_count", count}
+            });
+        }
+
+        // --- Combine both into one result ---
+        std::string err;
+        Json static_json = static_schema.empty()
+                               ? Json(Json::object{})
+                               : Json::parse(static_schema, err);
+
+        Json result = Json(Json::object{
+            {"live_schema",      Json(live_types)},
+            {"component_schema", static_json},
+            {"type_count",       (int)type_names.size()}
+        });
+
+        return {true, "", result.dump()};
     }
 
     CommandResult AgentCommandSystem::cmdGetState()
@@ -179,18 +226,63 @@ namespace Piccolo
         return cmdGetState();
     }
 
+    CommandResult AgentCommandSystem::cmdSaveLevel()
+    {
+        auto level_ptr = g_runtime_global_context.m_world_manager->getCurrentActiveLevel().lock();
+        if (!level_ptr)
+            return {false, "No active level", ""};
+
+        bool ok = level_ptr->save();
+        if (!ok)
+            return {false, "Level::save() failed — check engine log for details", ""};
+
+        return {true, "", Json(Json::object{{"saved", true}}).dump()};
+    }
+
     CommandResult AgentCommandSystem::cmdCreateObject(const CreateObjectParams& p)
     {
-        // For Phase 1: use a simplified approach — write a JSON object file
-        // and call reload. Full programmatic creation requires ObjectInstanceRes
-        // construction which is complex. This is a placeholder that returns
-        // guidance until the full implementation is wired.
-        //
-        // TODO: construct ObjectInstanceRes in-memory and call Level::createObject
-        return {false,
-                "create_object not yet fully implemented in Phase 1. "
-                "Use set_field on existing objects, or write level JSON + reload.",
-                ""};
+        auto level_ptr = g_runtime_global_context.m_world_manager->getCurrentActiveLevel().lock();
+        if (!level_ptr)
+            return {false, "No active level", ""};
+
+        // Build a minimal ObjectInstanceRes pointing at the asset definition.
+        // The definition path must be relative to the asset root (e.g.
+        // "asset/objects/character/player/player.object.json").
+        ObjectInstanceRes instance_res;
+        instance_res.m_name       = p.name;
+        instance_res.m_definition = p.definition.empty()
+                                        ? std::string{}
+                                        : p.definition;
+        // No instanced_components overrides: the definition supplies defaults.
+
+        GObjectID new_id = level_ptr->createObject(instance_res);
+        if (new_id == k_invalid_gobject_id)
+        {
+            return {false,
+                    "createObject failed for '" + p.name + "' (definition='" + p.definition + "'). "
+                    "Check that the definition path is correct and the asset exists.",
+                    ""};
+        }
+
+        // Optionally reposition via TransformComponent.
+        if (p.set_position)
+        {
+            const LevelObjectsMap& objects = level_ptr->getAllGObjects();
+            auto it = objects.find(new_id);
+            if (it != objects.end() && it->second)
+            {
+                auto* tc = it->second->tryGetComponent<TransformComponent>("TransformComponent");
+                if (tc)
+                    tc->setPosition(p.position);
+            }
+        }
+
+        Json result = Json(Json::object{
+            {"created", p.name},
+            {"id",      (int)new_id},
+            {"definition", p.definition}
+        });
+        return {true, "", result.dump()};
     }
 
     CommandResult AgentCommandSystem::cmdDeleteObject(const std::string& name)

@@ -120,6 +120,10 @@ namespace Piccolo
 
     void InputSystem::calculateCursorDeltaAngles()
     {
+        // Both window and render system are absent in headless mode.
+        if (!g_runtime_global_context.m_window_system || !g_runtime_global_context.m_render_system)
+            return;
+
         std::array<int, 2> window_size = g_runtime_global_context.m_window_system->getWindowSize();
 
         if (window_size[0] < 1 || window_size[1] < 1)
@@ -173,8 +177,13 @@ namespace Piccolo
         if (!m_agent_command_active)
         {
             std::shared_ptr<WindowSystem> window_system = g_runtime_global_context.m_window_system;
-            if (window_system->getFocusMode())
+            if (window_system && window_system->getFocusMode())
             {
+                m_game_command &= (k_complement_control_command ^ (unsigned int)GameCommand::invalid);
+            }
+            else if (!window_system)
+            {
+                // headless: no window, treat as always focused (no invalid bit)
                 m_game_command &= (k_complement_control_command ^ (unsigned int)GameCommand::invalid);
             }
             else

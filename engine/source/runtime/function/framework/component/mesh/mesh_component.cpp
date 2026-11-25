@@ -94,10 +94,14 @@ namespace Piccolo
                 mesh_part.m_transform_desc.m_transform_matrix = object_transform_matrix;
             }
 
-            RenderSwapContext& render_swap_context = g_runtime_global_context.m_render_system->getSwapContext();
-            RenderSwapData&    logic_swap_data     = render_swap_context.getLogicSwapData();
+            // Render-system is absent in headless mode; skip swap-data upload then.
+            if (g_runtime_global_context.m_render_system)
+            {
+                RenderSwapContext& render_swap_context = g_runtime_global_context.m_render_system->getSwapContext();
+                RenderSwapData&    logic_swap_data     = render_swap_context.getLogicSwapData();
 
-            logic_swap_data.addDirtyGameObject(GameObjectDesc {m_parent_object.lock()->getID(), dirty_mesh_parts});
+                logic_swap_data.addDirtyGameObject(GameObjectDesc {m_parent_object.lock()->getID(), dirty_mesh_parts});
+            }
 
             transform_component->setDirtyFlag(false);
         }

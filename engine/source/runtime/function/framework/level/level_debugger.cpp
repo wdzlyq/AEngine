@@ -21,6 +21,12 @@ namespace Piccolo
             return;
         }
 
+        // render_debug_config and debugdraw_manager are absent in headless mode
+        if (!g_runtime_global_context.m_render_debug_config)
+        {
+            return;
+        }
+
         if (g_runtime_global_context.m_render_debug_config->animation.show_bone_name)
         {
             showAllBonesName(level);

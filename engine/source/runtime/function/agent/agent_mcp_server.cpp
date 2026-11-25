@@ -46,6 +46,10 @@ namespace Piccolo
             LOG_INFO("AgentMCPServer listening on port {}", m_port);
             m_impl->server.listen("0.0.0.0", m_port);
         });
+
+        // Wait until the server is actually accepting connections before returning.
+        m_impl->server.wait_until_ready();
+        LOG_INFO("AgentMCPServer ready on port {}", m_port);
     }
 
     void AgentMCPServer::stop()
@@ -187,17 +191,24 @@ namespace Piccolo
         else if (tool_name == "create_object")
         {
             CreateObjectParams p;
-            p.name = args["name"].string_value();
+            p.name       = args["name"].string_value();
+            p.definition = args["definition"].string_value();
             if (args["position"].is_object())
             {
-                p.position.x = (float)args["position"]["x"].number_value();
-                p.position.y = (float)args["position"]["y"].number_value();
-                p.position.z = (float)args["position"]["z"].number_value();
+                p.position.x    = (float)args["position"]["x"].number_value();
+                p.position.y    = (float)args["position"]["y"].number_value();
+                p.position.z    = (float)args["position"]["z"].number_value();
+                p.set_position  = true;
             }
             for (const auto& c : args["components"].array_items())
                 p.components.push_back(c.string_value());
             cmd.type   = CommandType::CreateObject;
             cmd.params = std::move(p);
+        }
+        else if (tool_name == "save_level")
+        {
+            cmd.type   = CommandType::SaveLevel;
+            cmd.params = std::monostate{};
         }
         else if (tool_name == "delete_object")
         {
@@ -280,18 +291,18 @@ namespace Piccolo
   },
   {
     "name": "create_object",
-    "description": "Create a new GObject in the current level.",
+    "description": "Create a new GObject in the current level from an asset definition file.",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "name": {"type": "string", "description": "Unique name for the new object"},
+        "name":       {"type": "string", "description": "Unique display name for the new object"},
+        "definition": {"type": "string", "description": "Asset-relative path to the .object.json prefab, e.g. asset/objects/character/player/player.object.json"},
         "position": {
           "type": "object",
           "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}
-        },
-        "components": {"type": "array", "items": {"type": "string"}, "description": "Component type names to attach"}
+        }
       },
-      "required": ["name"]
+      "required": ["name", "definition"]
     }
   },
   {
@@ -361,6 +372,11 @@ namespace Piccolo
       },
       "required": ["action"]
     }
+  },
+  {
+    "name": "save_level",
+    "description": "Persist the current in-memory level state back to its JSON file on disk.",
+    "inputSchema": {"type": "object", "properties": {}}
   }
 ])JSON";
     }

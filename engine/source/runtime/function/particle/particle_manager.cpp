@@ -54,6 +54,13 @@ namespace Piccolo
     void ParticleManager::createParticleEmitter(const ParticleComponentRes&   particle_res,
                                                 ParticleEmitterTransformDesc& transform_desc)
     {
+        // Render-system is absent in headless mode; just allocate an ID and skip swap.
+        if (!g_runtime_global_context.m_render_system)
+        {
+            transform_desc.m_id = ParticleEmitterIDAllocator::alloc();
+            return;
+        }
+
         RenderSwapContext& swap_context = g_runtime_global_context.m_render_system->getSwapContext();
         RenderSwapData&    swap_data    = swap_context.getLogicSwapData();
 

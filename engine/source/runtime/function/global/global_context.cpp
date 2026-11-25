@@ -21,6 +21,8 @@
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/window_system.h"
 
+#include <cstdlib>
+
 namespace Piccolo
 {
     RuntimeGlobalContext g_runtime_global_context;
@@ -42,28 +44,44 @@ namespace Piccolo
         m_world_manager = std::make_shared<WorldManager>();
         m_world_manager->initialize();
 
-        m_window_system = std::make_shared<WindowSystem>();
-        WindowCreateInfo window_create_info;
-        m_window_system->initialize(window_create_info);
+        if (!g_is_headless)
+        {
+            m_window_system = std::make_shared<WindowSystem>();
+            WindowCreateInfo window_create_info;
+            m_window_system->initialize(window_create_info);
+        }
 
         m_input_system = std::make_shared<InputSystem>();
-        m_input_system->initialize();
+        if (!g_is_headless)
+        {
+            m_input_system->initialize();
+        }
 
         m_particle_manager = std::make_shared<ParticleManager>();
         m_particle_manager->initialize();
 
-        m_render_system = std::make_shared<RenderSystem>();
-        RenderSystemInitInfo render_init_info;
-        render_init_info.window_system = m_window_system;
-        m_render_system->initialize(render_init_info);
+        if (!g_is_headless)
+        {
+            m_render_system = std::make_shared<RenderSystem>();
+            RenderSystemInitInfo render_init_info;
+            render_init_info.window_system = m_window_system;
+            m_render_system->initialize(render_init_info);
 
-        m_debugdraw_manager = std::make_shared<DebugDrawManager>();
-        m_debugdraw_manager->initialize();
+            m_debugdraw_manager = std::make_shared<DebugDrawManager>();
+            m_debugdraw_manager->initialize();
 
-        m_render_debug_config = std::make_shared<RenderDebugConfig>();
+            m_render_debug_config = std::make_shared<RenderDebugConfig>();
+        }
 
+        // Port can be overridden via PICCOLO_AGENT_PORT env var (default 7777).
+        int agent_port = 7777;
+        if (const char* env_port = std::getenv("PICCOLO_AGENT_PORT"))
+        {
+            int p = std::atoi(env_port);
+            if (p > 0 && p < 65536) agent_port = p;
+        }
         m_agent_command_system = std::make_shared<AgentCommandSystem>();
-        m_agent_command_system->initialize(7777);
+        m_agent_command_system->initialize(agent_port);
     }
 
     void RuntimeGlobalContext::shutdownSystems()
@@ -78,8 +96,11 @@ namespace Piccolo
 
         m_debugdraw_manager.reset();
 
-        m_render_system->clear();
-        m_render_system.reset();
+        if (m_render_system)
+        {
+            m_render_system->clear();
+            m_render_system.reset();
+        }
 
         m_window_system.reset();
 

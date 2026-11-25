@@ -1,0 +1,1010 @@
+<title>Piccolo AI-Native Research</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* Layout: sticky sidebar TOC + scrolling main on wide, stacked on mobile */
+:root {
+  --bg:       #f7f8fc;
+  --surface:  #ffffff;
+  --surface2: #eef1f8;
+  --fg:       #111827;
+  --fg2:      #374151;
+  --muted:    #6b7483;
+  --accent:   #1d4ed8;
+  --accent-h: #1e40af;
+  --accent-s: #dbeafe;
+  --success:  #15803d;
+  --success-s:#dcfce7;
+  --warn:     #b45309;
+  --warn-s:   #fef3c7;
+  --danger:   #be123c;
+  --danger-s: #ffe4e6;
+  --border:   #dde3ef;
+  --code-bg:  #1e2433;
+  --code-fg:  #cdd6f4;
+  --radius:   6px;
+  --shadow:   0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #0c0f18;
+    --surface:  #141926;
+    --surface2: #1c2235;
+    --fg:       #e2e8f4;
+    --fg2:      #b0bcd4;
+    --muted:    #7a87a0;
+    --accent:   #60a5fa;
+    --accent-h: #93c5fd;
+    --accent-s: #1e3a5f;
+    --success:  #4ade80;
+    --success-s:#052e16;
+    --warn:     #fbbf24;
+    --warn-s:   #422006;
+    --danger:   #fb7185;
+    --danger-s: #4c0519;
+    --border:   #232c3e;
+    --code-bg:  #0f1420;
+    --code-fg:  #cdd6f4;
+    --shadow:   0 1px 3px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:       #0c0f18;
+  --surface:  #141926;
+  --surface2: #1c2235;
+  --fg:       #e2e8f4;
+  --fg2:      #b0bcd4;
+  --muted:    #7a87a0;
+  --accent:   #60a5fa;
+  --accent-h: #93c5fd;
+  --accent-s: #1e3a5f;
+  --success:  #4ade80;
+  --success-s:#052e16;
+  --warn:     #fbbf24;
+  --warn-s:   #422006;
+  --danger:   #fb7185;
+  --danger-s: #4c0519;
+  --border:   #232c3e;
+  --code-bg:  #0f1420;
+  --code-fg:  #cdd6f4;
+  --shadow:   0 1px 3px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+/* Top bar */
+.topbar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px max(16px, env(safe-area-inset-left, 0px));
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--surface);
+  z-index: 25;
+}
+.topbar-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-badges { display: flex; gap: 6px; flex-shrink: 0; }
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.badge-blue { background: var(--accent-s); color: var(--accent); }
+.badge-green { background: var(--success-s); color: var(--success); }
+.badge-warn { background: var(--warn-s); color: var(--warn); }
+
+/* Layout shell */
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto;
+  gap: 0 32px;
+  align-items: start;
+  padding-block: 24px 64px;
+}
+@media (max-width: 720px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* Sidebar TOC */
+.sidebar {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 52px);
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - 72px);
+  overflow-y: auto;
+  padding: 16px 0;
+}
+.toc-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0 8px 0;
+  display: block;
+}
+.toc-nav { list-style: none; }
+.toc-nav li { line-height: 1; }
+.toc-nav a {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 5px 10px 5px 8px;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.toc-nav a:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-s); }
+.toc-nav a.active { color: var(--accent); border-color: var(--accent); font-weight: 500; }
+.toc-nav .sub { padding-left: 20px; }
+
+/* Main content */
+.content { min-width: 0; }
+
+/* Page hero */
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px 24px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow);
+}
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.hero-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--fg);
+  text-wrap: balance;
+  margin-bottom: 10px;
+}
+.hero-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  max-width: 56ch;
+}
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.hero-meta .dot { opacity: .4; }
+
+/* Sections */
+.section {
+  margin-bottom: 40px;
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 64px);
+}
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.section-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+h2.section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--fg);
+  text-wrap: balance;
+}
+h3.sub-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 24px 0 10px;
+  text-wrap: balance;
+}
+p { color: var(--fg2); margin-bottom: 12px; max-width: 68ch; }
+p:last-child { margin-bottom: 0; }
+p strong { color: var(--fg); font-weight: 600; }
+a { color: var(--accent); text-decoration-color: transparent; transition: text-decoration-color .15s; }
+a:hover { text-decoration-color: var(--accent); }
+
+/* Code / path blocks */
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: var(--surface2);
+  color: var(--fg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+  padding: 7px 12px;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg2);
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface2); }
+td code { font-size: 11.5px; }
+
+/* Cards */
+.cards { display: grid; gap: 12px; margin: 12px 0; }
+.cards-2 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.cards-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.card-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+.card p { font-size: 13px; max-width: none; }
+
+/* Callout boxes */
+.callout {
+  border-left: 3px solid;
+  padding: 12px 16px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 16px 0;
+}
+.callout-info  { border-color: var(--accent); background: var(--accent-s); }
+.callout-warn  { border-color: var(--warn); background: var(--warn-s); }
+.callout-ok    { border-color: var(--success); background: var(--success-s); }
+.callout p { color: var(--fg); max-width: none; font-size: 13.5px; }
+.callout strong { color: var(--fg); }
+
+/* Gap indicators */
+.gap-row { display: flex; gap: 8px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.gap-row:last-child { border-bottom: none; }
+.icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.gap-label { font-size: 13px; color: var(--fg2); }
+.gap-label strong { color: var(--fg); }
+
+/* Arch option cards */
+.arch-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.arch-card.recommended { border-color: var(--accent); border-width: 2px; }
+.arch-header { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.arch-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.tag-a { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.tag-b { background: var(--warn-s); color: var(--warn); }
+.tag-c { background: var(--danger-s); color: var(--danger); }
+.tag-d { background: var(--accent-s); color: var(--accent); }
+.arch-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--fg);
+}
+.arch-desc { font-size: 13px; color: var(--fg2); margin: 0; max-width: none; }
+.arch-props { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.prop { font-size: 11.5px; padding: 3px 9px; border-radius: 100px; border: 1px solid var(--border); color: var(--fg2); background: var(--surface2); }
+.prop.good { background: var(--success-s); color: var(--success); border-color: transparent; }
+.prop.bad  { background: var(--danger-s);  color: var(--danger);  border-color: transparent; }
+.prop.mid  { background: var(--warn-s);    color: var(--warn);    border-color: transparent; }
+
+/* Roadmap */
+.phase-list { list-style: none; }
+.phase-item {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.phase-item:last-child { border-bottom: none; }
+.phase-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  padding-top: 2px;
+}
+.phase-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--fg);
+  margin-bottom: 4px;
+}
+.phase-desc { font-size: 13px; color: var(--fg2); margin: 0; max-width: none; }
+
+ul.bullets { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 10px 0; }
+ul.bullets li { font-size: 13px; color: var(--fg2); padding-left: 18px; position: relative; }
+ul.bullets li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-size: 12px; }
+
+/* Q&A */
+.qa-item { margin-bottom: 20px; }
+.qa-q {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--fg);
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+}
+.qa-a {
+  font-size: 13.5px;
+  color: var(--fg2);
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: 0 0 var(--radius) var(--radius);
+  border: 1px solid var(--border);
+  line-height: 1.65;
+}
+.qa-a p { max-width: none; font-size: 13.5px; }
+
+/* Diagram */
+.diagram {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.8;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+/* Footer */
+footer {
+  margin-top: 40px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+</style>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-title">Piccolo AI-Native Research · Deliverables 1–3</span>
+  <div class="topbar-badges">
+    <span class="badge badge-blue">Research</span>
+    <span class="badge badge-warn">No Source Changes</span>
+  </div>
+</div>
+
+<!-- PAGE SHELL -->
+<div class="shell">
+
+  <!-- SIDEBAR TOC -->
+  <aside class="sidebar">
+    <span class="toc-label">Contents</span>
+    <ul class="toc-nav">
+      <li><a href="#survey">D1 · Research Survey</a></li>
+      <li><a href="#definition" class="sub">Definition</a></li>
+      <li><a href="#tencent" class="sub">Tencent GCA</a></li>
+      <li><a href="#godot" class="sub">Godot MCP Ecosystem</a></li>
+      <li><a href="#academic" class="sub">Academic Research</a></li>
+      <li><a href="#capability-table" class="sub">Capability Table</a></li>
+      <li><a href="#assessment">D2 · Piccolo Assessment</a></li>
+      <li><a href="#mainloop" class="sub">Main Loop</a></li>
+      <li><a href="#framework" class="sub">World / Level / GObject</a></li>
+      <li><a href="#reflection" class="sub">Reflection System</a></li>
+      <li><a href="#assets" class="sub">Asset System</a></li>
+      <li><a href="#gaps" class="sub">Gap Summary</a></li>
+      <li><a href="#proposal">D3 · Architecture Proposal</a></li>
+      <li><a href="#seven-qs" class="sub">Seven Questions</a></li>
+      <li><a href="#four-archs" class="sub">Four Architectures</a></li>
+      <li><a href="#design" class="sub">Module Design</a></li>
+      <li><a href="#mvp" class="sub">MVP</a></li>
+      <li><a href="#roadmap" class="sub">Roadmap</a></li>
+      <li><a href="#risks" class="sub">Risks</a></li>
+    </ul>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="content">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-eyebrow">AI-Native Game Engine · Architecture Research</div>
+      <h1 class="hero-title">Making Piccolo natively support AI Agents as first-class citizens</h1>
+      <p class="hero-sub">A source-grounded survey of external practice, a Piccolo architecture assessment with real file paths, and a recommended architecture with a phased implementation plan — to make an LLM-driven agent autonomously create, run, and verify games using Piccolo's existing assets and systems.</p>
+      <div class="hero-meta">
+        <span>2026-11</span><span class="dot">·</span>
+        <span>3 deliverables</span><span class="dot">·</span>
+        <span>1200+ lines source-verified analysis</span><span class="dot">·</span>
+        <span>Target window: 1–2 months</span>
+      </div>
+    </div>
+
+    <!-- DELIVERABLE 1: RESEARCH SURVEY -->
+    <section class="section" id="survey">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <h2 class="section-title">Research Survey</h2>
+      </div>
+      <p><strong>Goal:</strong> Establish external context before designing for Piccolo. No source-code conclusions here — every external claim cites a public source.</p>
+
+      <h3 class="sub-title" id="definition">What "AI-Native" means in architecture</h3>
+      <p>Three layers of integration, in increasing depth:</p>
+      <div class="cards cards-3">
+        <div class="card">
+          <div class="card-eyebrow">Layer 0</div>
+          <div class="card-title">AI-Enabled</div>
+          <p>Existing engine unchanged. External AI writes files or calls a CLI/MCP wrapper. Engine has no concept of agent at the architectural level.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Layer 1</div>
+          <div class="card-title">AI-Assisted</div>
+          <p>Engine ships a scripting/plugin interface agents happen to call. No new abstractions added; existing editor/scripting APIs are reused.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Layer 2</div>
+          <div class="card-title">AI-Native</div>
+          <p>Engine treats the agent as a formally recognized control principal: agent-readable state, typed capability interface, simulation-loop control, observation, rollback, and verification primitives — all first-class.</p>
+        </div>
+      </div>
+      <div class="callout callout-info">
+        <p><strong>Working test:</strong> Can an agent, without a human at the keyboard or a GUI editor, discover supported operations, compose a valid game, run it, observe the physics result of an interaction, decide whether the character jumped correctly, and roll back if it did not — using stable engine interfaces? If any step needs JSON hacking, screen-scraping, or undocumented internal state, the engine is not AI-native in that dimension.</p>
+      </div>
+
+      <h3 class="sub-title" id="tencent">Tencent: claims vs. evidence</h3>
+      <p>A thorough search for Tencent's "MagicAI AI-native game engine" and "Godot AI-native fork" returns <strong>no public source, design doc, or engineering blog</strong> describing such a system. The only Tencent artifact with verified architectural depth is an agent pipeline — not an engine modification.</p>
+      <div class="card">
+        <div class="card-eyebrow">Verified Tencent Artifact</div>
+        <div class="card-title">Game-Creation-Agents (GCA)</div>
+        <p>Open-source pipeline that turns a natural-language game request into a runnable Phaser 4 browser game. 8 specialized agents in an orchestrated DAG: design → scaffold → (implement ∥ assets) → asset-integration → verify → critic. The most architecturally substantive public system in this space.</p>
+        <ul class="bullets">
+          <li>Repo: <a href="https://github.com/Tencent/Game-Creation-Agents">github.com/Tencent/Game-Creation-Agents</a> · initial release Oct 14 2026</li>
+          <li>Paper: <a href="https://arxiv.org/abs/2610.16776">arXiv:2610.16776</a></li>
+          <li>Tencent GDC 2026 interview: <a href="https://www.invenglobal.com/articles/20316/comprehensive-interview-tencent-unveils-3-core-ai-technologies-at-gdc-2026-integrated-into-the-production-pipeline">InvenGlobal</a></li>
+        </ul>
+      </div>
+      <p><strong>What GCA teaches us (most architecturally notable = verification):</strong></p>
+      <ul class="bullets">
+        <li><strong>Contract-first verification:</strong> Test oracles are written from the design document <em>before</em> implementation. Applied to Piccolo: define a <code>RuntimeObservation</code> schema before writing scene-assembly tools.</li>
+        <li><strong>Code-blind critic:</strong> Evaluates game quality from observable behavior, never source code. Applied to Piccolo: physics verification should test that <code>character.position.z</code> changed, not that <code>MotorComponent::jump()</code> was called.</li>
+        <li><strong>Build digest gating:</strong> Advance pipeline stages only when previous artifacts are sealed and consistent. Applied to Piccolo: command executor should validate scene state after each operation before allowing the next.</li>
+      </ul>
+      <div class="callout callout-warn">
+        <p><strong>What GCA is not:</strong> It does not modify Phaser 4. Phaser is a black box. It is <em>not</em> an AI-native engine. The agent-native quality belongs entirely to the pipeline infrastructure, not to the engine itself.</p>
+      </div>
+
+      <h3 class="sub-title" id="godot">Godot MCP Ecosystem</h3>
+      <p>At least a dozen active projects connect AI agents to Godot via MCP. These are the most mature "agent + game engine" open-source implementations available.</p>
+      <div class="cards cards-2">
+        <div class="card">
+          <div class="card-eyebrow">Most capable</div>
+          <div class="card-title"><a href="https://github.com/tugcantopaloglu/godot-mcp">tugcantopaloglu/godot-mcp</a></div>
+          <p>157 tools — widest coverage found. 3D/2D, networking, audio, animation. Tested with Godot 4.7.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Agent-first design</div>
+          <div class="card-title"><a href="https://github.com/aigengame/godot-agent">aigengame/godot-agent</a></div>
+          <p>Headless validation + live runtime control. Returns structured JSON results for programmatic agent consumption — explicitly designed for agents, not human-driven MCP.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Capability discovery</div>
+          <div class="card-title"><a href="https://github.com/NPGameDev/godot-mcp-toolkit">NPGameDev/godot-mcp-toolkit</a></div>
+          <p>Writes MCP tools in GDScript. Uses Godot's <code>ClassDB.class_get_method_list()</code> so agents discover what operations are available — the closest analogue to agent capability discovery in any game engine.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Rust, high-perf</div>
+          <div class="card-title"><a href="https://github.com/regiellis/godot-mcp-go">regiellis/godot-mcp-go</a></div>
+          <p>CLI + MCP. Gives the full discover-build-play-observe-debug-fix-verify loop. No agent or model required; MCP is optional.</p>
+        </div>
+      </div>
+      <p><strong>Common architecture across all Godot MCP projects:</strong></p>
+      <pre>LLM Agent → MCP Client → MCP Server (Python/TypeScript/Rust)
+  → WebSocket → Godot Editor Addon (GDScript) → Godot Engine API</pre>
+      <p>Agents never touch the engine's C++ internals — they drive the editor's GDScript API over WebSocket. All follow a simple request-response protocol per <a href="https://github.com/ee0pdt/Godot-MCP/blob/main/docs/architecture.md">Godot-MCP architecture doc</a>.</p>
+      <p><strong>Key limitations for autonomous agents:</strong></p>
+      <ul class="bullets">
+        <li>No multi-step command queue — complex workflows require turn-by-turn driving</li>
+        <li>No persistent scene diffing — agent re-queries full state after every change</li>
+        <li>No transactional semantics — no rollback on mid-sequence failure</li>
+        <li>Editor-process dependency — headless Godot loses the editor API surface</li>
+        <li>No physics simulation step control — cannot pause, inject deterministic input, step one frame, observe</li>
+      </ul>
+
+      <h3 class="sub-title" id="academic">Academic Research</h3>
+      <div class="cards cards-2">
+        <div class="card">
+          <div class="card-eyebrow"><a href="https://arxiv.org/abs/2606.12882">arXiv:2606.12882</a></div>
+          <div class="card-title">HarnessBridge</div>
+          <p>Shows that agent performance is shaped not just by model capability and environment design, but by the harness that mediates the agent-environment interface. The mapping between LLM representations and tool schemas is a learnable variable — not a neutral wrapper.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow"><a href="https://arxiv.org/abs/2605.09998">arXiv:2605.09998</a></div>
+          <div class="card-title">Self-Improving Agents</div>
+          <p>Agents starting from a minimal environment interface can alternate between acting and refining their own prompts, sub-agents, skills, and memory. The initial interface does not need to be comprehensive — a minimal, stable, discoverable interface is sufficient to bootstrap.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow"><a href="https://arxiv.org/pdf/2605.24220">arXiv:2605.24220</a></div>
+          <div class="card-title">Polar: Agentic RL on Any Harness</div>
+          <p>Shows how existing agent harnesses can be isolated behind a model API proxy. Defines "harness" as the scaffolding that wraps a foundation model with tools, memory, and planning — a system concept directly applicable here.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Design principle</div>
+          <div class="card-title"><a href="https://drfloriansteiner.substack.com/p/your-app-isnt-agent-ready-until-users">Agent-ready parity</a></div>
+          <p><em>"Your app isn't agent-ready until users and AI can do the exact same things."</em> Applied to Piccolo: if a human can place a RigidBody component on a GObject by clicking, but an agent cannot do the same via stable API, that is an architectural deficit regardless of whether an MCP wrapper exists.</p>
+        </div>
+      </div>
+
+      <h3 class="sub-title" id="capability-table">The 10 AI-Native Capabilities: Evidence Audit</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Capability</th><th>Godot MCP</th><th>Tencent GCA</th><th>Unity ML-Agents</th></tr></thead>
+          <tbody>
+            <tr><td>1. Headless / CLI mode</td><td class="badge badge-warn">Partial</td><td>N/A (browser)</td><td class="badge badge-green">✓ Strong</td></tr>
+            <tr><td>2. Engine capability atomization</td><td class="badge badge-warn">Partial</td><td class="badge badge-green">✓ per-task agents</td><td class="badge badge-warn">Partial</td></tr>
+            <tr><td>3. ClassDB / Reflection auto-binding</td><td class="badge badge-green">✓ Godot ClassDB</td><td>N/A</td><td class="badge badge-warn">Partial</td></tr>
+            <tr><td>4. Agent-readable asset representation</td><td class="badge badge-blue">✗ None</td><td class="badge badge-blue">✗ Assets generated</td><td class="badge badge-warn">Partial</td></tr>
+            <tr><td>5. Event-driven / async execution</td><td class="badge badge-blue">✗ Sync RPC only</td><td class="badge badge-blue">✗</td><td class="badge badge-green">✓</td></tr>
+            <tr><td>6. Agent-controllable lifecycle</td><td class="badge badge-warn">Partial</td><td class="badge badge-green">✓ pipeline-level</td><td class="badge badge-green">✓</td></tr>
+            <tr><td><strong>7. Physics single-step</strong></td><td class="badge badge-blue">✗ Not found</td><td>N/A</td><td class="badge badge-green">✓ Academy.EnvironmentStep</td></tr>
+            <tr><td>8. Offscreen rendering / observation</td><td class="badge badge-warn">Partial (screenshots)</td><td class="badge badge-green">✓ Playwright + VLM</td><td class="badge badge-green">✓</td></tr>
+            <tr><td><strong>9. Scene snapshot / rollback</strong></td><td class="badge badge-blue">✗ Not found</td><td class="badge badge-blue">✗</td><td class="badge badge-warn">Partial</td></tr>
+            <tr><td>10. Engine-native verification</td><td class="badge badge-blue">✗ External only</td><td class="badge badge-warn">Above-engine layer</td><td class="badge badge-warn">Partial</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout callout-info">
+        <p><strong>Key finding:</strong> Physics single-step (#7) and scene snapshot/rollback (#9) are universally absent in LLM-driven agent projects. Both require engine-level modification, not external wrapping. These are the architectural gaps that most distinguish AI-native from AI-enabled.</p>
+      </div>
+    </section>
+
+    <!-- DELIVERABLE 2: PICCOLO ASSESSMENT -->
+    <!-- DELIVERABLE 2: PICCOLO ASSESSMENT -->
+    <section class="section" id="assessment">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <h2 class="section-title">Piccolo Architecture Assessment</h2>
+      </div>
+      <p><strong>Rule:</strong> Every claim cites a real file path, class, or function in this repository. Source verified in <code>/home/wdzlyq/agentt/Piccolo</code>.</p>
+
+      <h3 class="sub-title" id="mainloop">Main loop — window-driven, no headless path</h3>
+      <pre>// engine/source/runtime/engine.cpp
+PiccoloEngine::run()
+  → while (!window_system->shouldClose())     // ← window is the exit condition
+      → tickOneFrame(delta_time)
+            → logicalTick(delta_time)
+                 → world_manager->tick()
+                 → input_system->tick()
+            → render_system->swapLogicRenderData()
+            → rendererTick()
+            → window_system->pollEvents()      // ← no window, no ticks</pre>
+      <p>The loop is window-driven: no headless mode, no external step control. <code>tickOneFrame()</code> returns <code>bool</code> but only checks the window-close flag. However, <code>logicalTick()</code> and <code>rendererTick()</code> are cleanly separated — a minimal change could add a <code>runHeadless(int max_ticks)</code> that loops <code>logicalTick()</code> without the window system.</p>
+
+      <h3 class="sub-title" id="framework">World / Level / GObject — usable APIs already exist</h3>
+      <pre>// engine/source/runtime/function/framework/level/level.h
+GObjectID createObject(const ObjectInstanceRes& object_instance_res);   // ← agent entry
+void      deleteGObjectByID(GObjectID go_id);                            // ← agent entry
+const LevelObjectsMap& getAllGObjects() const;                           // ← query
+bool load(const std::string& level_res_url);                            // ← save/load
+bool save();</pre>
+      <p><code>Level::createObject()</code> takes an <code>ObjectInstanceRes</code> (name + definition URL + instanced components) — fully deserializable from JSON via reflection. This is the correct path for an agent to spawn a new game object. <code>WorldManager</code> is more closed: <code>loadWorld()</code> and <code>loadLevel()</code> are private, called only from the config-file path — an agent must write a valid level file and call <code>reloadCurrentLevel()</code>.</p>
+      <p><strong>Gap:</strong> No <code>updateObjectComponent()</code> on a live object. Mutation requires delete-and-recreate, direct reflection field writes, or save-modify-reload.</p>
+
+      <h3 class="sub-title" id="reflection">Reflection — valid foundation, needs annotation</h3>
+      <pre>// engine/source/runtime/core/meta/reflection/reflection.h
+TypeMeta meta = TypeMeta::newMetaFromName("MotorComponent");
+meta.getFields()                       // → enumerate all reflected fields
+FieldAccessor f = meta.getFieldByName("m_move_speed");
+f.set(component_ptr, &new_value);       // → typed field access
+MethodAccessor m = meta.getMethodByName("getOffStuckDead");
+m.invoke(component_ptr);                // → invoke registered method</pre>
+      <p>Reflection is code-generated from <code>CLASS(..., Fields)</code> / <code>WhiteListFields</code> macros at compile time, registered at startup via <code>TypeMetaRegister::metaRegister()</code>. It can enumerate all types, get/set any <code>META(Enable)</code> field by name, invoke registered methods, and serialize any reflected object to/from JSON.</p>
+      <p><strong>Reflection limits:</strong> no semantic descriptions, no precondition or invariant enforcement (setting <code>m_move_speed = -1000</code> will run), no distinction between mid-tick-safe and load-time-only fields, and no inter-component dependency encoding (MotorComponent requires TransformComponent — nowhere encoded).</p>
+
+      <h3 class="sub-title" id="assets">Asset system — paths, not semantics</h3>
+      <p><code>AssetManager</code> (in <code>engine/source/runtime/resource/asset_manager/asset_manager.h</code>) is a thin serialization wrapper: resolve relative URL → read/write JSON via reflection serializer. <strong>No registry, no metadata catalog, no type-based discovery, no dependency tracking.</strong> An agent must scan the filesystem and infer asset purpose from filenames and JSON structure.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Asset</th><th>Path</th><th>Agent-usable</th></tr></thead>
+          <tbody>
+            <tr><td>Player character (physics + animation + camera + motor)</td><td><code>asset/objects/character/player/player.object.json</code></td><td class="badge badge-green">Yes, as template</td></tr>
+            <tr><td>Primitive meshes (cube, sphere, capsule, cone, cylinder, convex)</td><td><code>asset/objects/basic/</code></td><td class="badge badge-green">Yes</td></tr>
+            <tr><td>Environment objects (wall, terrain, particle emitter)</td><td><code>asset/objects/environment/</code></td><td class="badge badge-green">Yes</td></tr>
+            <tr><td>Sample level (gravity, character binding, object instances)</td><td><code>asset/level/1-1.level.json</code></td><td class="badge badge-green">Yes, as template</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The existing level JSON already embeds a <code>LuaComponent</code> script that reads and writes reflected fields by name at runtime — confirming that Lua + reflection is a viable path for injecting per-object behavior without recompiling C++.</p>
+
+      <h3 class="sub-title" id="gaps">Capability gap summary</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Capability</th><th>Status</th><th>Minimum change</th></tr></thead>
+          <tbody>
+            <tr><td>Headless mode</td><td class="badge badge-blue">Missing</td><td>Add <code>runHeadless(int)</code> to <code>PiccoloEngine</code></td></tr>
+            <tr><td>Programmatic input injection</td><td class="badge badge-blue">Missing</td><td>Add <code>setGameCommand(uint)</code> to <code>InputSystem</code> (1 method)</td></tr>
+            <tr><td>External command interface</td><td class="badge badge-blue">Missing</td><td>New <code>AgentCommandServer</code> module</td></tr>
+            <tr><td>Single-step physics observation</td><td class="badge badge-blue">Missing</td><td>Expose <code>logicalTick()</code> via agent API</td></tr>
+            <tr><td>Scene snapshot / rollback</td><td class="badge badge-blue">Missing</td><td>New <code>SceneSnapshot</code> class</td></tr>
+            <tr><td>Asset registry / metadata</td><td class="badge badge-blue">Missing</td><td>New catalog (no engine change required)</td></tr>
+            <tr><td>Component mutation on live object</td><td class="badge badge-blue">Missing</td><td>New <code>Level::updateObjectComponent()</code></td></tr>
+            <tr><td>Create / delete / query GObjects</td><td class="badge badge-green">Exists</td><td><code>Level::createObject / deleteGObjectByID / getAllGObjects</code></td></tr>
+            <tr><td>Read / write component fields</td><td class="badge badge-green">Exists</td><td>Reflection <code>FieldAccessor</code></td></tr>
+            <tr><td>Discover reflected types</td><td class="badge badge-green">Exists</td><td><code>TypeMetaRegister</code> at startup</td></tr>
+            <tr><td>Serialize any type to JSON</td><td class="badge badge-green">Exists</td><td><code>Serializer::write()</code></td></tr>
+            <tr><td>Per-object scripted logic</td><td class="badge badge-green">Exists</td><td><code>LuaComponent</code> via JSON</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout callout-warn">
+        <p><strong>Threading risk (most important):</strong> <code>RuntimeGlobalContext</code> is a single-process singleton; all subsystems share one logical thread. An agent command accessing <code>g_runtime_global_context</code> from a background thread while <code>logicalTick()</code> runs is a race. The agent command system <strong>must queue commands for execution at the start of the next <code>logicalTick()</code></strong>, never execute them immediately.</p>
+      </div>
+    </section>
+
+    <!-- DELIVERABLE 3: ARCHITECTURE PROPOSAL -->
+    <section class="section" id="proposal">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <h2 class="section-title">Architecture Proposal</h2>
+      </div>
+
+      <h3 class="sub-title" id="seven-qs">The Seven Special Research Questions</h3>
+      <div class="qa-item">
+        <div class="qa-q">Q1 — What does "Agent as first-class citizen" require architecturally?</div>
+        <div class="qa-a">
+          <p>Five changes: a stable typed command intake path; a state query path without rendering; headless execution mode; programmatic input injection; a snapshot/rollback mechanism. These are control-flow changes, not knowledge changes — orthogonal to LLM reasoning ability. Layers (1)–(3) are new bottom-layer capabilities requiring engine source changes; (4) is a one-method addition; (5) is a new class with no changes to existing code.</p>
+        </div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q">Q2 — Does a full-featured MCP plugin achieve AI-native goals?</div>
+        <div class="qa-a">
+          <p>It achieves ≈70% for editor-time scene authoring. It fails at: physics verification (cannot observe game interaction result), single-step simulation, rollback, and input injection for game testing. <strong>If the goal is agent autonomously creates <em>and tests</em> a game, MCP alone is not sufficient.</strong> If the goal were only "agent edits scenes while a human tests," MCP would be adequate.</p>
+        </div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q">Q3 — Can Piccolo's reflection system serve as the agent control interface?</div>
+        <div class="qa-a">
+          <p>Yes, with caveats. It can enumerate types and get/set fields. Gaps: no semantic descriptions in metadata, no validation/constraint enforcement in field accessors, no inter-type dependency encoding. For a minimal agent interface it is sufficient; for a robust one, add a JSON-schema layer over reflection output documenting field semantics, valid ranges, and required co-components — this schema layer requires no engine modification.</p>
+        </div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q">Q4 — Hardest problem in agent-driven asset reuse?</div>
+        <div class="qa-a">
+          <p><strong>Semantic understanding</strong>, not retrieval or combination. The agent does not know that <code>player.object.json</code> is a "character with physics and animation" — this is stated in no machine-readable file. The solution is a hand-authored <code>asset_catalog.json</code>. For the current 10–20 asset corpus, this is hours of work, not system engineering. <strong>Vector databases and knowledge graphs are premature and not recommended.</strong></p>
+        </div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q">Q5 — What gaps prevent autonomous game development in Piccolo today?</div>
+        <div class="qa-a">
+          <p>In blocking order: (1) no programmatic tick loop control, (2) no command injection interface, (3) no runtime state query endpoint, (4) no snapshot/rollback, (5) no asset semantic descriptions. None are hard problems — all have known engineering solutions. The gap is implementation work, not unsolved research.</p>
+        </div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q">Q6 — What belongs in C++ vs. the external harness?</div>
+        <div class="qa-a">
+          <p><strong>In C++:</strong> command queue (commands land in a buffer, execute at tick start), input injection, tick control, state serialization, result encoding — anything that must synchronize with the tick loop. <strong>In the harness:</strong> LLM planning, command sequencing, retry/error recovery, asset semantic descriptions, verification logic, workflow orchestration — anything that reasons about what to do next. <strong>Boundary test:</strong> if it needs to know the engine tick is about to happen, it's C++; if it needs to reason about next steps, it's the harness.</p>
+        </div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q">Q7 — Which modifications best demonstrate C++ / Agent Infra / reliability skills?</div>
+        <div class="qa-a">
+          <p>Highest-signal portfolio items: (1) Agent Command Subsystem in C++ — typed command queue, dispatch table, result encoding, thread-safety protocol. (2) Snapshot/Rollback — in-memory serialization of a live scene, restore on failure. (3) External Agent Harness in Python — planning loop, command sequencing, verification, retry-with-rollback. (4) Asset Catalog with validation — JSON schema over reflection output, component dependency constraints.</p>
+        </div>
+      </div>
+
+      <h3 class="sub-title" id="four-archs">Four candidate architectures</h3>
+
+      <div class="arch-card">
+        <div class="arch-header">
+          <span class="arch-tag tag-a">A</span>
+          <span class="arch-name">External Agent + MCP / JSON-File Interface</span>
+        </div>
+        <p class="arch-desc">External Python harness writes level JSON, signals reload, scrapes logs for errors, uses vision model on screenshots. No engine source changes.</p>
+        <div class="arch-props">
+          <span class="prop bad">No physics verification</span>
+          <span class="prop bad">No input injection</span>
+          <span class="prop bad">No rollback</span>
+          <span class="prop good">Minimal engine changes</span>
+        </div>
+      </div>
+
+      <div class="arch-card recommended">
+        <div class="arch-header">
+          <span class="arch-tag tag-b">B</span>
+          <span class="arch-name">In-Engine Agent Control Subsystem</span>
+        </div>
+        <p class="arch-desc">New C++ module <code>AgentControlSystem</code> added to <code>RuntimeGlobalContext</code> runs an HTTP server in a background thread, queues JSON commands, executes at next <code>logicalTick()</code>, returns typed results.</p>
+        <div class="arch-props">
+          <span class="prop good">Create / mutate / delete GObjects</span>
+          <span class="prop good">Input injection</span>
+          <span class="prop good">State observation after N ticks</span>
+          <span class="prop good">Snapshot + rollback</span>
+          <span class="prop good">Physics single-step</span>
+          <span class="prop mid">Still needs window</span>
+          <span class="prop mid">Medium engine change</span>
+        </div>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-header">
+          <span class="arch-tag tag-c">C</span>
+          <span class="arch-name">Full AI-Native Architecture</span>
+        </div>
+        <p class="arch-desc">Architecture B + headless mode + Vulkan offscreen rendering + physics single-step API + semantic asset catalog. Engine runs entirely without a display.</p>
+        <div class="arch-props">
+          <span class="prop good">Everything in B</span>
+          <span class="prop good">Headless</span>
+          <span class="prop good">Offscreen rendering</span>
+          <span class="prop bad">Exceeds 2-month window</span>
+          <span class="prop bad">High engine change</span>
+        </div>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-header">
+          <span class="arch-tag tag-d">D — Recommended</span>
+          <span class="arch-name">Progressive Hybrid</span>
+        </div>
+        <p class="arch-desc">Start with the minimum to unblock the agent (week 1–2), validate end-to-end, then extend based on observed bottlenecks. Naturally reaches Architecture B by week 8.</p>
+        <div class="arch-props">
+          <span class="prop good">Working code in week 2</span>
+          <span class="prop good">Early assumption validation</span>
+          <span class="prop good">Reaches B by week 8</span>
+          <span class="prop good">Risk-ordered delivery</span>
+        </div>
+      </div>
+
+      <div class="callout callout-ok">
+        <p><strong>Recommendation: Architecture D (Progressive Hybrid) targeting Architecture B as the end state.</strong> A cannot achieve the stated goal. B is achievable in 1–2 months and produces the highest-value C++ systems work. C is the right long-term target but exceeds the window due to Vulkan offscreen rendering complexity. D starts delivering working code in week 2 and naturally reaches B by week 8.</p>
+      </div>
+
+      <h3 class="sub-title" id="design">Target system architecture</h3>
+      <div class="diagram">┌──────────────────────────────────────────────────────────────────────┐
+│                  External Agent Harness (Python)                      │
+│   LLM API ◄── Planning Loop          Task Tracker ◄── Verifier      │
+│         ↕                                   ↕                        │
+│   Asset Catalog (asset_catalog.json)   (expected vs observed state)  │
+│                 AgentHarness HTTP Client (JSON/localhost)             │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │  JSON over HTTP  (localhost:7890)
+┌──────────────────────────▼───────────────────────────────────────────┐
+│                       Piccolo Engine Process                          │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                    AgentControlSystem                [NEW]     │  │
+│  │  HTTP Server Thread → CommandQueue (std::mutex) → Dispatch     │  │
+│  │  CommandResult ◄──── SceneSnapshot (in-memory serialization)   │  │
+│  └──────────────────────────┬───────────────────────────────────┘   │
+│                dispatched at tick start │                             │
+│  ┌──────────────────────────▼───────────────────────────────────┐    │
+│  │              RuntimeGlobalContext                            │    │
+│  │  WorldManager → Level → GObject → Components                │    │
+│  │  InputSystem → setGameCommand(uint)         [+1 method]      │    │
+│  │  AssetManager → loadAsset&lt;T&gt;() / saveAsset&lt;T&gt;()           │    │
+│  │  PhysicsManager → PhysicsScene → Jolt step                  │    │
+│  └──────────────────────────────────────────────────────────────┘    │
+│  PiccoloEngine::logicalTick()                                         │
+│    → agentCommandSystem->dispatchQueuedCommands()     [+1 call]       │
+│    → world_manager->tick()  →  input_system->tick()                   │
+└───────────────────────────────────────────────────────────────────────┘</div>
+      <p><strong>New files:</strong> <code>engine/source/runtime/function/agent/agent_command_system.h/.cpp</code>, <code>agent_command_types.h</code>, <code>agent_scene_snapshot.h/.cpp</code>. <strong>Modified:</strong> <code>global_context.h</code> (add member), <code>engine.cpp</code> (1 added call in <code>logicalTick()</code>), <code>input_system.h</code> (1 added method).</p>
+
+      <h3 class="sub-title" id="mvp">MVP design</h3>
+      <div class="card">
+        <div class="card-eyebrow">Goal — using existing Piccolo assets only</div>
+        <div class="card-title">Minimal playable third-person game, agent-verified</div>
+        <p>Character spawns, player moves and jumps, third-person camera follows, at least one static wall for collision. The agent verifies the character's position changes when movement input is injected and that the jump raises the Z coordinate.</p>
+      </div>
+      <p><strong>Agent sequence:</strong></p>
+      <ol style="padding-left: 18px; font-size: 13px; color: var(--fg2); line-height: 1.9;">
+        <li>Query asset catalog → identify <code>character/player</code> and <code>environment/wall</code></li>
+        <li>TakeSnapshot (save rollback point)</li>
+        <li>CreateObject Player at (3, 3, 0) with <code>player.object.json</code> definition</li>
+        <li>CreateObject Wall × 3 forming a small arena</li>
+        <li>SaveLevel</li>
+        <li>SetInput(forward) + RunTicks(30) → QueryObjects → verify <code>player.position.y</code> changed</li>
+        <li>SetInput(jump) + RunTicks(10) → QueryObjects → verify <code>player.position.z &gt; 0.1</code> during ticks 3–8</li>
+        <li>Report verified game</li>
+      </ol>
+
+      <h3 class="sub-title" id="roadmap">Phased implementation roadmap</h3>
+      <ul class="phase-list">
+        <li class="phase-item">
+          <div class="phase-label">Phase 0<br>Week 1–2</div>
+          <div>
+            <div class="phase-title">Unblock agent access</div>
+            <p class="phase-desc">Add <code>setGameCommand(uint)</code> to <code>InputSystem</code> (1 line). Add minimal in-process bridge or file-polling for reload signal. Python harness skeleton with <code>reload()</code>, <code>query_objects()</code>, <code>set_input()</code>. <strong>Acceptance:</strong> Python script can write a level JSON, signal reload, inject input, read back GObject positions.</p>
+          </div>
+        </li>
+        <li class="phase-item">
+          <div class="phase-label">Phase 1<br>Week 3–6</div>
+          <div>
+            <div class="phase-title">AgentCommandSystem</div>
+            <p class="phase-desc">Full command set (create, delete, set field, snapshot, restore, run ticks, query, capabilities) over HTTP/JSON with cpp-httplib. Thread-safe command queue. <code>SceneSnapshot</code> class. Python harness executor loop with rollback. <strong>Acceptance:</strong> MVP scenario runs end-to-end without crashes under rapid requests.</p>
+          </div>
+        </li>
+        <li class="phase-item">
+          <div class="phase-label">Phase 2<br>Week 7–8</div>
+          <div>
+            <div class="phase-title">Asset catalog + verification</div>
+            <p class="phase-desc">Hand-authored <code>asset_catalog.json</code> covering all Piccolo assets. <code>Verifier</code> class in Python with configurable state assertions. Full LLM planning loop integration. <strong>Acceptance:</strong> User types "make a third-person game," agent produces and verifies it.</p>
+          </div>
+        </li>
+        <li class="phase-item">
+          <div class="phase-label">Phase 3<br>Week 9+</div>
+          <div>
+            <div class="phase-title">Headless + reflection schema (optional)</div>
+            <p class="phase-desc"><code>PiccoloEngine::runHeadless(int max_ticks)</code>. Conditional skip of <code>WindowSystem</code>/<code>RenderSystem</code> in headless mode. <code>GetCapabilities</code> command serializes all <code>TypeMeta</code> entries to JSON schema. <strong>Acceptance:</strong> Engine starts and runs complete without a display window.</p>
+          </div>
+        </li>
+      </ul>
+
+      <h3 class="sub-title" id="risks">Key risks and mitigations</h3>
+      <ul class="bullets">
+        <li><strong>Command queue race condition:</strong> HTTP thread writes while tick thread drains. Fix: <code>std::mutex</code> + <code>std::queue</code>; drain under lock, execute outside lock. Never hold the lock during command execution.</li>
+        <li><strong>Snapshot incompleteness:</strong> JSON state misses runtime-only fields (animation frame, physics velocity). Accept for MVP (snapshot is for rollback on failed operations, not mid-game recovery). Document the limitation.</li>
+        <li><strong>Reflection field name hallucination:</strong> LLM generates a command with wrong field path. Fix: always call <code>GetCapabilities</code> first and feed exact field names into the LLM context before generating field-access commands.</li>
+        <li><strong>cpp-httplib dependency:</strong> Single-header, no external deps. Add to <code>engine/3rdparty/</code>. Alternatively, use a UNIX domain socket to avoid any new dependency entirely.</li>
+      </ul>
+
+      <div class="cards cards-3">
+        <div class="card">
+          <div class="card-eyebrow">Experiment 1 · 1 day</div>
+          <div class="card-title">Input injection</div>
+          <p>Add <code>setGameCommand(uint)</code>, call from test harness after <code>startEngine()</code>, verify character moves. Validates the core assumption before any larger C++ work.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Experiment 2 · 1 day</div>
+          <div class="card-title">Snapshot round-trip</div>
+          <p>Serialize a <code>Level</code> to JSON via reflection, write to disk, reload, verify GObjects present. <code>Level::save()</code> already does this — verify that <code>createObject()</code> after <code>clear()</code> produces identical runtime state.</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Experiment 3 · 2 days</div>
+          <div class="card-title">Threading model</div>
+          <p>Run a simple HTTP server in <code>std::thread</code> while the main loop runs in the main thread. Push a reload-level signal via mutex-protected flag. Verify no crashes under rapid requests.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <p><strong>Next step:</strong> Review Deliverables 1 and 2 for accuracy and gaps. Confirm the recommended direction (D → B) before implementation begins. No engine source changes will be made until direction is approved.</p>
+      </div>
+
+    </section>
+
+    <footer>
+      <p>Full source documents: <a href="01-research-survey.md">01-research-survey.md</a> · <a href="02-piccolo-assessment.md">02-piccolo-assessment.md</a> · <a href="03-architecture-proposal.md">03-architecture-proposal.md</a>. Engine source code unchanged.</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  const sections = document.querySelectorAll('section[id], h3[id]');
+  const links = document.querySelectorAll('.toc-nav a');
+  const map = {};
+  links.forEach(l => { const h = l.getAttribute('href'); if (h) map[h.slice(1)] = l; });
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const lnk = map[e.target.id];
+        if (lnk) lnk.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -75% 0px' });
+  sections.forEach(s => obs.observe(s));
+})();
+</script>
+

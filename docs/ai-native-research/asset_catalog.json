@@ -1,0 +1,152 @@
+{
+  "version": "1.0",
+  "description": "Hand-curated catalog of every reusable object prefab in the Piccolo asset library. Read by the Python agent harness to construct legal object-instance requests without hallucinating field names or component paths. The engine itself never reads this file.",
+  "units": "meters and seconds; positions are (x, y, z) with y up",
+  "coordinate_note": "Piccolo uses a Z-up world for the character controller (jump raises z), but levels also set y. The verifier reads the actual runtime position from get_state and checks whichever axis the MotorComponent treats as vertical. Prefer z for jump assertions.",
+  "assets": [
+    {
+      "id": "character/player",
+      "definition": "asset/objects/character/player/player.object.json",
+      "type": "character",
+      "description": "Third-person player character: physics capsule body, humanoid skeleton animation, skinned mesh, motor controller (move/jump/sprint), and a follow camera. A Lua script tweaks jump height based on movement state.",
+      "capabilities": ["move", "jump", "sprint", "animate", "camera-follow"],
+      "components": ["TransformComponent", "AnimationComponent", "MeshComponent", "MotorComponent", "CameraComponent", "LuaComponent"],
+      "collision": {"shape": "capsule", "radius": 0.3, "half_height": 0.7, "note": "half-height is the cylindrical portion, excluding caps"},
+      "required_companions": [],
+      "configurable_fields": {
+        "MotorComponent.m_move_speed": {"type": "float", "unit": "m/s", "default": 2.0, "range": [0.1, 20.0], "desc": "Base walking speed"},
+        "MotorComponent.m_jump_height": {"type": "float", "unit": "m", "default": 1.0, "range": [0.1, 5.0], "desc": "Jump apex height (overridden by Lua script at runtime)"},
+        "MotorComponent.m_max_move_speed_ratio": {"type": "float", "default": 1.0, "range": [0.1, 3.0]},
+        "MotorComponent.m_max_sprint_speed_ratio": {"type": "float", "default": 2.0, "range": [0.1, 5.0]},
+        "MotorComponent.m_move_acceleration": {"type": "float", "unit": "m/s^2", "default": 2.0, "range": [0.0, 10.0]},
+        "MotorComponent.m_sprint_acceleration": {"type": "float", "unit": "m/s^2", "default": 2.0, "range": [0.0, 10.0]}
+      },
+      "notes": "Exactly one Player per level is required for camera-follow and motor-driven movement. Place at a position clear of other colliders so the capsule does not spawn inside a wall."
+    },
+    {
+      "id": "environment/wall",
+      "definition": "asset/objects/environment/wall/wall.object.json",
+      "type": "environment",
+      "description": "A plain static wall, thin in x and tall in y, oriented along z. Good for enclosing an arena or blocking line of sight.",
+      "capabilities": ["block-movement", "block-sight"],
+      "components": ["TransformComponent", "MeshComponent", "RigidBodyComponent"],
+      "collision": {"shape": "box", "half_extents": {"x": 0.15, "y": 5.0, "z": 3.5}, "actor_type": "static", "note": "full size 0.3 x 10.0 x 7.0; local position offset z=3.5"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement of the wall's local origin"}
+      },
+      "notes": "Rotate about y to orient the long axis. Multiple instances tile along z to form long barriers."
+    },
+    {
+      "id": "environment/wall_block",
+      "definition": "asset/objects/environment/wall/wall_block.object.json",
+      "type": "environment",
+      "description": "A solid cube block, 2x2x2 meters. The simplest collidable prop; stackable to build simple structures.",
+      "capabilities": ["block-movement"],
+      "components": ["TransformComponent", "RigidBodyComponent", "MeshComponent"],
+      "collision": {"shape": "box", "half_extents": {"x": 1.0, "y": 1.0, "z": 1.0}, "actor_type": "static", "note": "full size 2.0 x 2.0 x 2.0; local position offset z=1.0"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement of the block's local origin"}
+      },
+      "notes": "Useful as an obstacle the player must jump over or walk around."
+    },
+    {
+      "id": "environment/wall_with_window",
+      "definition": "asset/objects/environment/wall/wall_with_window.object.json",
+      "type": "environment",
+      "description": "A wall section with a window opening — same footprint as wall, but the middle is hollow so the player can see (not walk) through.",
+      "capabilities": ["block-movement", "block-sight-partial"],
+      "components": ["TransformComponent", "MeshComponent", "RigidBodyComponent"],
+      "collision": {"shape": "compound", "actor_type": "static", "note": "multiple box shapes leave a window gap in the center"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement"}
+      },
+      "notes": "Collision is solid except for the window opening; the character capsule is too tall to pass through."
+    },
+    {
+      "id": "environment/wall_with_door",
+      "definition": "asset/objects/environment/wall/wall_with_door.object.json",
+      "type": "environment",
+      "description": "A wall section with a door opening — the gap is tall enough for the character capsule to walk through.",
+      "capabilities": ["block-movement", "allow-passage-through-doorway"],
+      "components": ["TransformComponent", "MeshComponent", "RigidBodyComponent"],
+      "collision": {"shape": "compound", "actor_type": "static", "note": "boxes flanking a central doorway gap"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement"}
+      },
+      "notes": "Use to create passages and rooms the player can actually traverse."
+    },
+    {
+      "id": "environment/fence",
+      "definition": "asset/objects/environment/fence/fence.object.json",
+      "type": "environment",
+      "description": "A low decorative fence. Multiple box shapes form a perimeter; shorter than the wall.",
+      "capabilities": ["block-movement"],
+      "components": ["TransformComponent", "MeshComponent", "RigidBodyComponent"],
+      "collision": {"shape": "compound", "actor_type": "static", "note": "four box shapes enclosing a rectangular area"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement"}
+      },
+      "notes": "Treat as a boundary marker; jumping over it may be possible depending on height."
+    },
+    {
+      "id": "environment/stairs",
+      "definition": "asset/objects/environment/stairs/stairs.object.json",
+      "type": "environment",
+      "description": "A short flight of stepped boxes rising in height. Lets the character walk up to a higher elevation.",
+      "capabilities": ["block-movement", "walkable-slope"],
+      "components": ["TransformComponent", "MeshComponent", "RigidBodyComponent"],
+      "collision": {"shape": "compound", "actor_type": "static", "note": "seven stacked boxes of increasing height form the steps"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement of the step stack"}
+      },
+      "notes": "Character controller sweep may or may not climb these cleanly; use for elevation tests, not as a hard barrier."
+    },
+    {
+      "id": "environment/floor",
+      "definition": "asset/objects/environment/floor/floor.object.json",
+      "type": "environment",
+      "description": "A large flat ground plane. Place exactly one to give the level a walkable surface and prevent the character from falling forever.",
+      "capabilities": ["block-movement", "walkable-surface"],
+      "components": ["TransformComponent", "MeshComponent", "RigidBodyComponent"],
+      "collision": {"shape": "box", "half_extents": {"x": 43.0, "y": 24.0, "z": 0.5}, "actor_type": "static", "note": "very large flat slab; acts as the ground"},
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "World placement; keep y low so the top surface is the ground plane"}
+      },
+      "notes": "Essential for any playable scene — without it the character capsule has nothing to rest on. One per level is usually enough."
+    },
+    {
+      "id": "environment/particle",
+      "definition": "asset/objects/environment/particle/particle.object.json",
+      "type": "effect",
+      "description": "A GPU particle emitter. Visual only — no collision and no gameplay interaction.",
+      "capabilities": ["visual-effect"],
+      "components": ["ParticleComponent"],
+      "collision": null,
+      "required_companions": [],
+      "configurable_fields": {
+        "TransformComponent.m_position": {"type": "Vector3", "desc": "Where the emitter sits in the world"}
+      },
+      "notes": "Decorative. The verifier ignores particle objects entirely; do not rely on them for gameplay."
+    }
+  ],
+  "defaults": {
+    "player_spawn": {"position": {"x": 3, "y": 3, "z": 0}, "note": "Default player spawn from 1-1.level.json"},
+    "floor_spawn": {"position": {"x": 0, "y": 0, "z": 0}}
+  },
+  "input_commands": {
+    "FORWARD": 1,
+    "BACKWARD": 2,
+    "LEFT": 4,
+    "RIGHT": 8,
+    "JUMP": 16,
+    "SPRINT": 64,
+    "FREE_CAMERA": 256
+  }
+}

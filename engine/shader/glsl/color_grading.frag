@@ -10,36 +10,60 @@ layout(set = 0, binding = 1) uniform sampler2D color_grading_lut_texture_sampler
 
 layout(location = 0) out highp vec4 out_color;
 
+// Sample one texel from the LUT atlas using the exact pixel-centre UV.
+// We always pass pixel-centre coordinates, so no bilinear bleeding.
+highp vec4 sampleLUT(highp float tile_index, highp float r, highp float g)
+{
+    highp ivec2 lut_size = textureSize(color_grading_lut_texture_sampler, 0);
+    highp float W        = float(lut_size.x); // 256
+    highp float H        = float(lut_size.y); // 16  = N
+
+    // Pixel-centre of the texel at (r_idx, g_idx) inside the tile
+    highp float u = (tile_index * H + r * (H - 1.0) + 0.5) / W;
+    highp float v = (              g * (H - 1.0) + 0.5) / H;
+
+    return texture(color_grading_lut_texture_sampler, vec2(u, v));
+}
+
 void main()
 {
-    highp ivec2 lut_tex_size = textureSize(color_grading_lut_texture_sampler, 0);
-    highp float _COLORS      = float(lut_tex_size.y);
+    highp ivec2 lut_size = textureSize(color_grading_lut_texture_sampler, 0);
+    highp float N        = float(lut_size.y); // 16
 
-    highp vec4 color = subpassLoad(in_color).rgba;
+    highp vec4  color = subpassLoad(in_color).rgba;
+    highp float r     = clamp(color.r, 0.0, 1.0);
+    highp float g     = clamp(color.g, 0.0, 1.0);
+    highp float b     = clamp(color.b, 0.0, 1.0);
 
-    // The LUT is a 2D atlas of N×N tiles laid out horizontally: width = N*N, height = N.
-    // Each tile represents one blue-channel slice.  Red indexes within a tile horizontally,
-    // green indexes vertically, and blue selects which tile to read.
-    // The Linear sampler handles bilinear interpolation inside each tile (r and g axes).
-    // We manually lerp between the two adjacent blue tiles to get trilinear quality.
+    // B selects between two adjacent tiles
+    highp float b_scaled = b * (N - 1.0);
+    highp float b0       = floor(b_scaled);
+    highp float b1       = min(b0 + 1.0, N - 1.0);
+    highp float b_frac   = b_scaled - b0;
 
-    highp float b_scaled = color.b * (_COLORS - 1.0);
-    highp float b_floor  = floor(b_scaled);
-    highp float b_frac   = b_scaled - b_floor;
+    // R and G are interpolated manually inside each tile
+    highp float r_lo = floor(r * (N - 1.0)) / (N - 1.0);
+    highp float r_hi = min(r_lo + 1.0 / (N - 1.0), 1.0);
+    highp float r_f  = r * (N - 1.0) - floor(r * (N - 1.0));
 
-    // Half-texel offset so we sample at texel centres and avoid clamping artefacts
-    // at the first and last slice.
-    highp float r_uv = (color.r * (_COLORS - 1.0) + 0.5) / (_COLORS * _COLORS);
-    highp float g_uv = (color.g * (_COLORS - 1.0) + 0.5) / _COLORS;
+    highp float g_lo = floor(g * (N - 1.0)) / (N - 1.0);
+    highp float g_hi = min(g_lo + 1.0 / (N - 1.0), 1.0);
+    highp float g_f  = g * (N - 1.0) - floor(g * (N - 1.0));
 
-    highp float tile_width = 1.0 / _COLORS;   // each tile occupies 1/_COLORS of total width
+    // 8-sample trilinear fetch (2 tiles × 2×2 corners)
+    highp vec4 c000 = sampleLUT(b0, r_lo, g_lo);
+    highp vec4 c100 = sampleLUT(b0, r_hi, g_lo);
+    highp vec4 c010 = sampleLUT(b0, r_lo, g_hi);
+    highp vec4 c110 = sampleLUT(b0, r_hi, g_hi);
+    highp vec4 c001 = sampleLUT(b1, r_lo, g_lo);
+    highp vec4 c101 = sampleLUT(b1, r_hi, g_lo);
+    highp vec4 c011 = sampleLUT(b1, r_lo, g_hi);
+    highp vec4 c111 = sampleLUT(b1, r_hi, g_hi);
 
-    highp vec2 uv0 = vec2(b_floor * tile_width + r_uv, g_uv);
-    highp vec2 uv1 = vec2((b_floor + 1.0) * tile_width + r_uv, g_uv);
+    highp vec4 result = mix(
+        mix(mix(c000, c100, r_f), mix(c010, c110, r_f), g_f),
+        mix(mix(c001, c101, r_f), mix(c011, c111, r_f), g_f),
+        b_frac);
 
-    highp vec4 lut_color = mix(texture(color_grading_lut_texture_sampler, uv0),
-                               texture(color_grading_lut_texture_sampler, uv1),
-                               b_frac);
-
-    out_color = lut_color;
+    out_color = result;
 }
